@@ -1,0 +1,224 @@
+@name Jokkols_SmartDoor
+@outputs Door
+@persist Allow:array Admin:array AllowSound
+
+#Constructor All setting that are made when the chip is placed
+#only.
+if(first()){
+    Allow[1,entity] = owner()
+    Admin[1,entity] = owner()
+    
+    #default sound setting.
+    AllowSound = 1
+    
+    runOnChat(1)
+    printColor(vec(200,255,100),"Thank you for using Jokkol's SmartDoor!\nType '-sdhelp' for a list of commands.")
+}
+#A second delay to decrease lag.
+interval(1000)
+
+#Find entities in a sphere around the chip.
+findInSphere(entity():pos(),40)
+
+#Makes sure it is a player.
+findClipToClass("player")
+
+#Assigns the Target variable to the first player found.
+Target=findResult(1)
+
+DoorOpen = 0
+
+#The admins will have to add themselves to the permission list.
+for(I=1,Allow:count()) {
+    if(Target:isAlive()) {
+        if(Target==Allow[I,entity] && Target:keyUse()) {
+            DoorOpen = 1
+        }else{
+        DoorOpen = 0
+        }
+    }
+    if(!Allow[I,entity]:isPlayer()){ 
+        #Makes sure that the array doesn't clutter up,
+        #the player on the permission list has to be online.
+        Allow:remove(I) 
+    }
+    if(!Admin[I,entity]:isPlayer()){
+        Admin:remove(I)
+    }
+}
+#If the door is allowed to open:
+if(DoorOpen == 1){
+    Door = 1
+    if(AllowSound == 1){
+        soundPlay("1",1,"doors/door1_move.wav")
+    }
+} else {
+    Door = 0
+}
+
+if(DoorOpen == 0 && Target:keyUse()){
+    printColor(vec(255,0,0),"You are not allowed to use this door.")
+    if(AllowSound == 1){
+        soundPlay("1",1,"doors/wood_stop1.wav")
+    }
+}
+
+#Chat commands:
+#Dissect the owners sentence.
+Command = owner():lastSaid():explode(" ")
+#This section asks if the chip is triggered by an admin chat message.
+CanCommand = entity()
+for(I=1,Admin:count()){
+    if(chatClk(Admin[I,entity])){
+        CanCommand = Admin[I,entity]
+    }
+}
+if(chatClk(CanCommand)){
+    #Add player to permission list.
+    if(Command[1,string] == "-sdadd"){
+        hideChat(1)
+        #Give the access permit to the targettet player.
+        Target = findPlayerByName(Command[2,string])  
+        
+        #If a player with the given name is on the server.
+        if(Target:isPlayer()){
+            #Checks if they allready have permission.
+            Allready = 0
+            #Goes through the array of permitted players to check
+            #for the name of the target.
+            for(I=1,Allow:count()){
+                if(Allow[I,entity]==Target){
+                    Allready = 1
+                }
+            }
+            
+            #If the target doesn't have permission allready,
+            #he gets added to the permission list.
+            if(Allready != 1){
+                Allow:pushEntity(Target)
+                printColor(vec(200,255,100),Target:name() + " has been added to the permission list.")
+            }else{#notification.
+                printColor(vec(200,255,100),"The player allready has permission.")
+            }
+        }else{
+            printColor(vec(200,255,100),"The player you are trying to add, doesn't exist.")
+        }
+    }
+        
+    #Remove player form permission list.
+    if(Command[1,string] == "-sdremove"){
+        hideChat(1)
+        Target = findPlayerByName(Command[2,string])
+        
+        if(Target:isPlayer()){
+            #A variable to see if a player was found in the array.    
+            Found = 0
+            
+            for(I=1,Allow:count()){
+                if(Target == Allow[I,entity]){
+                    printColor(vec(200,255,100),Target:name() + " has been removed from the permission list.")
+                    Allow:remove(I)
+                    Found = 1
+                }
+            }
+            if(Found != 1){
+                printColor(vec(200,255,100),Target:name() + " doesn't have permission.")
+            }
+        }else{
+            printColor(vec(200,255,100),Command[2,string] + " doesn't exist.")
+        }
+    }
+    
+    #Show the list of permissions.
+    if(Command[1,string] == "-sdlist"){
+        hideChat(1)
+        
+        for(I=1,Allow:count()){
+            Str = "This is the permission list:\n"
+            Str += I + ": " + Allow[I,entity]:name() + "\n"
+        }
+        printColor(vec(200,255,100),Str)
+    }
+    
+    #Add player to admin list.
+    #The next 3 commands are pasted and changed from above.
+    #Read above for comments.
+    if(Command[1,string] == "-sdaddadmin"){
+        hideChat(1)
+        Target = findPlayerByName(Command[2,string])  
+    
+        if(Target:isPlayer()){
+            Allready = 0
+            for(I=1,Admin:count()){
+                if(Admin[I,entity]==Target){
+                    Allready = 1
+                }
+            }
+            if(Allready != 1){
+                Admin:pushEntity(Target)
+                printColor(vec(200,255,100),Target:name() + " has been added to the admin list.")
+            }else{#notification.
+                printColor(vec(200,255,100),Target:name() + " is allready an admin.")
+            }
+        }else{
+            printColor(vec(200,255,100),Command[2,string] + " doesn't exist.")
+        }
+    }
+        
+    #Remove player form permission list.
+    if(Command[1,string] == "-sdremoveadmin"){
+        hideChat(1)
+        Target = findPlayerByName(Command[2,string])
+        if(Target:isPlayer()){    
+            Found = 0
+            
+            for(I=1,Admin:count()){
+                if(Target == Admin[I,entity]){
+                    printColor(vec(200,255,100),Target:name() + " has been removed from the admin list.")
+                    Admin:remove(I)
+                    Found = 1
+                }
+            }
+            if(Found != 1){
+                printColor(vec(200,255,100),Target:name() + " is not an admin.")
+            }
+        }else{
+            printColor(vec(200,255,100),Command[2,string] + " doesn't exist.")
+        }
+    }
+        
+    #Show the list of admins.
+    if(Command[1,string] == "-sdlistadmin"){
+        hideChat(1)
+        
+        for(I=1,Admin:count()){
+            Str = "This is the admin list:\n"
+            Str += I + ": " + Admin[I,entity]:name() + "\n"
+        }
+        printColor(vec(200,255,100),Str)
+    } 
+    
+    #Enable/disable sound.
+    if(Command[1,string] == "-sdsound"){
+        if(AllowSound == 1){
+            AllowSound = 0
+        }elseif(AllowSound == 0){
+            AllowSound = 1
+        }   
+    }
+    
+    #A list of commands:
+    if(Command[1,string] == "-sdhelp"){
+        Str = "This is a list of commmands:\n"
+        Str += "'-sdadd playername' give a player permission.\n"
+        Str += "'-sdremove playername' remove permission.\n"
+        Str += "'-sdlist' list of permissions.\n"
+        Str += "'-sdaddadmin playername' give player admin.\n"
+        Str += "'-sdremoveadmin playername' remove an admin.\n"
+        Str += "'-sdlistadmin' list of admins.\n"
+        Str += "'-sdsound' toggle sound.\n"
+        Str += "'-sdhelp' this list of commands. \n"
+        printColor(vec(200,255,100),Str)
+    }
+}        
+
